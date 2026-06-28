@@ -5,8 +5,7 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  previewFeatures = ["driverAdapters"]
+  output   = "./generated/prisma"
 }
 
 datasource db {
@@ -14,40 +13,96 @@ datasource db {
 }
 
 model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  username String
+  password String
+
+  sentRequests Request[] @relation("RequestFrom")
+  receivedRequests Request[] @relation("RequestTo")
+
+  friends  Friend[] @relation("UserFriends")
+  friendOf Friend[] @relation("FriendOf")
+
+  conversationsAsUser1 Conversation[] @relation("User1")
+  conversationsAsUser2 Conversation[] @relation("User2")
+  messages             Message[]
+
+  createdAt DateTime @default(now())
+}
+
+enum RequestStatus {
+  Sent
+  Received
+  Accepted
+  Rejected
+}
+
+model Request {
   id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
+
+  requesterID String
+  requestFrom User @relation("RequestFrom", fields: [requesterID], references: [id])
+
+  userID String
+  requestTo User @relation("RequestTo", fields: [userID], references: [id])
+
+  status RequestStatus @default(Sent)
   createdAt DateTime @default(now())
 
-  sentMessages  Message[]            @relation("sender")
-  conversations ConversationMember[]
+  @@unique([requesterID, userID])
+  @@index([userID])
+  @@index([requesterID])
+}
+
+model Friend {
+  id        String   @id @default(uuid())
+  
+
+  userId String
+  user   User   @relation("UserFriends", fields: [userId], references: [id])
+
+  friendId String
+  friend   User   @relation("FriendOf", fields: [friendId], references: [id])
+
+  createdAt DateTime @default(now())
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
 }
 
 model Conversation {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  
 
-  members  ConversationMember[]
+  senderId String
+  sender   User   @relation("User1", fields: [senderId], references: [id])
+
+  receriverId String
+  receiver   User   @relation("User2", fields: [receriverId], references: [id])
+
   messages Message[]
-}
 
-model ConversationMember {
-  userId         String
-  conversationId String
-
-  user         User         @relation(fields: [userId], references: [id])
-  conversation Conversation @relation(fields: [conversationId], references: [id])
-
-  @@id([userId, conversationId])
+  createdAt DateTime @default(now())
+  @@unique([senderId, receriverId])
+  @@index([senderId])
+  @@index([receriverId])  
 }
 
 model Message {
-  id             String   @id @default(uuid())
-  content        String
-  senderId       String
-  conversationId String
-  createdAt      DateTime @default(now())
+  id        String   @id @default(uuid())
+  content   String
+  
 
-  sender       User         @relation("sender", fields: [senderId], references: [id])
-  conversation Conversation @relation(fields: [conversationId], references: [id])
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id])
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  sentAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([sentAt])
 }

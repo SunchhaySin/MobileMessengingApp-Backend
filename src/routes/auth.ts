@@ -8,25 +8,33 @@ const router = express.Router();
 // Register
 router.post("/register", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, username, password, confirmPassword } = req.body;
 
+    if (!email || !username || !password || !confirmPassword) {
+        res.status(409).json({ message: "Enter your credentials" });
+    }
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { username },
+      where: { email: email }
     });
 
     if (existingUser) {
-      res.status(400).json({ message: "Username already taken" });
+      res.status(400).json({ message: "Email already registered" });
       return;
     }
 
+    if(password != confirmPassword) {
+      res.status(401).json({ message: "Password aren't matched" });
+      return;
+    }
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
     const user = await prisma.user.create({
       data: {
-        username,
+        email: email,
+        username: username,
         password: hashedPassword,
       },
     });
@@ -38,7 +46,7 @@ router.post("/register", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({ token, userId: user.id, username: user.username });
+    res.status(201).json({ token: token, data: user, message: "Register Success"});
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -47,11 +55,21 @@ router.post("/register", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { identifier, password } = req.body;
 
+    if (!identifier || !password) {
+        res.status(409).json({ message: "Enter your credentials" });
+        return;
+    }
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier },
+        ],
+      },
+      
     });
 
     if (!user) {
@@ -74,9 +92,12 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(200).json({ token, userId: user.id, username: user.username });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(200).json({ token: token, data: user, message: " Login Success" });
+    console.log(user)
+  } catch (e) {
+    if(e instanceof Error) {
+      res.status(500).json({ message: "Server error", error: e.message});
+    }
   }
 });
 

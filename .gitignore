@@ -17,7 +17,7 @@ yarn-error.log*
 *.log
 
 # Prisma generated
-/src/generated/prisma
+prisma/generated/
 
 # OS
 .DS_Store
