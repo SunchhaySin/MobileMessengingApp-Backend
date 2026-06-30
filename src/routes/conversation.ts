@@ -1,13 +1,13 @@
-// import express from "express";
-// import prisma from "../prisma.js";
-// import { verifyToken, AuthRequest } from "../middleware/auth.js";
+import express from "express";
+import prisma from "../prisma.js";
+import { verifyToken, AuthRequest } from "../middleware/auth.js";
 
-// const router = express.Router();
+const router = express.Router();
 
-// // Create or get existing conversation between two users
-// router.post("/", verifyToken, async (req: AuthRequest, res) => {
+// Create or get existing conversation between two users
+// router.post("/start", verifyToken, async (req: AuthRequest, res) => {
 //   try {
-//     const { targetUserId } = req.body;
+//     const { friendId } = req.body;
 //     const userId = req.userId as string;
 
 //     // Check if conversation already exists between these two users
@@ -15,11 +15,10 @@
 //       where: {
 //         members: {
 //           every: {
-//             userId: { in: [userId, targetUserId] },
+//             userId: { in: [userId, friendId] },
 //           },
 //         },
 //       },
-//       include: { members: true },
 //     });
 
 //     if (existing && existing.members.length === 2) {
@@ -43,7 +42,7 @@
 //   }
 // });
 
-// // Get all conversations for current user
+// Get all conversations for current user
 // router.get("/", verifyToken, async (req: AuthRequest, res) => {
 //   try {
 //     const userId = req.userId as string;
@@ -71,7 +70,7 @@
 //   }
 // });
 
-// // Get messages for a conversation
+// Get messages for a conversation
 // router.get("/:id/messages", verifyToken, async (req: AuthRequest, res) => {
 //   try {
 //     const id = req.params["id"] as string;
@@ -88,4 +87,4 @@
 //   }
 // });
 
-// export default router;
+export default router;

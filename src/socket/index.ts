@@ -45,6 +45,8 @@ export const initSocket = (io: Server) => {
       console.log(`User ${userId} joined conversation ${conversationId}`);
     });
 
+
+    // Sending Friend Request
     socket.on("friend:add", async ({ recipientId }) => {
       try {
         if (userId === recipientId) {
@@ -91,22 +93,29 @@ export const initSocket = (io: Server) => {
           });
         }
 
-        await prisma.request.create({
+        const newRequest = await prisma.request.create({
           data: { requesterID: userId!, userID: recipientId },
+          include: { 
+              requestFrom: { select: { id: true, username: true, email: true }},
+              requestTo: { select: { id: true, username: true, email: true }}
+            }
         });
 
         // notify sender
-        socket.emit("friend:add:success", { message: "Friend Request Sent" });
+        socket.emit("friend:add:success", { message: "Friend Request Sent", request: newRequest });
 
         // notify recipient in real time
         io.to(`user:${recipientId}`).emit("friend:new:request", {
           message: "You have a new friend request",
+          request: newRequest
         });
       } catch (e) {
         socket.emit("friend:add:error", { message: "Server error" });
       }
     });
 
+
+    // Accepting Friend Requests
     socket.on("friend:accept", async ({ requestId }) => {
       const request = await prisma.request.findUnique({
         where: { id: requestId },
@@ -127,23 +136,45 @@ export const initSocket = (io: Server) => {
           message: "Request already accepted",
         });
 
-      await prisma.request.update({
+      const updatedStatus = await prisma.request.update({
         where: { id: requestId },
         data: { status: "Accepted" },
+        select: {
+          status:true
+        }
       });
 
-      await prisma.friend.create({
+      const newFriend = await prisma.friend.create({
         data: { userId: userId!, friendId: request.requesterID },
+        include: {
+          user: {
+            select: {
+              username: true,
+              id:true,
+              email: true,
+            }
+          },
+          friend:{
+            select: {
+              username: true,
+              id:true,
+              email: true,
+            }
+          }
+        }
       });
 
       // notify acceptor
-      socket.emit("friend:accept:success", { message: "Request Accepted" });
+      socket.emit("friend:accept:success", { message: "Request Accepted", updatedStatus: updatedStatus, friend: newFriend });
       // notify the sender in real time
       io.to(`user:${request.requesterID}`).emit("friend:request:accepted", {
         message: "Your friend request was accepted",
+        friend: newFriend
       });
     });
 
+
+    // Rejecting Friend Requests
     socket.on("friend:reject", async ({ requestId }) => {
       const request = await prisma.request.findUnique({
         where: { id: requestId },
@@ -163,32 +194,61 @@ export const initSocket = (io: Server) => {
           message: "Cannot undo request acception",
         });
 
-      await prisma.request.update({
+      const updatedStatus = await prisma.request.update({
         where: { id: requestId },
         data: { status: "Rejected" },
       });
 
-      socket.emit("friend:reject:success", { message: "Request Rejected" });
+      socket.emit("friend:reject:success", { message: "Request Rejected", updatedStatus: updatedStatus });
       io.to(`user:${request.requesterID}`).emit("friend:request:rejected", {
         message: "Your friend request was rejected",
+        requestId: requestId
       });
     });
 
-    socket.on("friend:remove", async ({ requestId }) => {
-      const request = await prisma.request.findUnique({
-        where: { id: requestId },
-      });
 
-      if (!request)
-        return socket.emit("friend:error", { message: "Request not found" });
+    // Removing friend request sent by a user from database record
+    socket.on("request:remove", async ({ requestId, requestIds }) => {
+      // normalize input into a single array of ids
+      const ids: string[] = requestIds ?? (requestId ? [requestId] : []);
 
-      if (request.requesterID !== userId) {
-        return socket.emit("friend:error", { message: "Unauthorized" });
+      if (ids.length === 0) {
+        return socket.emit("request:remove:error", {
+          message: "No Request Selected",
+        });
       }
 
-      await prisma.request.delete({ where: { id: requestId } });
+      const requests = await prisma.request.findMany({
+        where: { id: { in: ids } },
+      });
 
-      socket.emit("friend:remove:success", { message: "Request Removed" });
+      if (requests.length === 0) {
+        return socket.emit("request:remove:error", {
+          message: "Request(s) not found",
+        });
+      }
+
+      // make sure the user is allowed to delete every request found
+      const unauthorized = requests.some(
+        (r) => r.requesterID !== userId && r.userID !== userId,
+      );
+
+      if (unauthorized) {
+        return socket.emit("request:remove:error", {
+          message: "Unauthorized to delete",
+        });
+      }
+
+      const foundIds = requests.map((r) => r.id);
+
+      await prisma.request.deleteMany({
+        where: { id: { in: foundIds } },
+      });
+
+      socket.emit("request:remove:success", {
+        message: `${foundIds.length} request(s) removed`,
+        removedIds: foundIds,
+      });
     });
 
     // // Send a message
