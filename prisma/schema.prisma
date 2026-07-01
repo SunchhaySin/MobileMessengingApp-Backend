@@ -24,9 +24,13 @@ model User {
   friends  Friend[] @relation("UserFriends")
   friendOf Friend[] @relation("FriendOf")
 
-  conversationsAsUser1 Conversation[] @relation("User1")
-  conversationsAsUser2 Conversation[] @relation("User2")
+  conversationAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationAsUser2 Conversation[] @relation("ConversationUser2")
+
   messages             Message[]
+
+  alertsTo Alert[] @relation("sender")
+  alertFrom  Alert[] @relation("receiver")
 
   createdAt DateTime @default(now())
 }
@@ -71,24 +75,6 @@ model Friend {
   @@index([friendId])
 }
 
-model Conversation {
-  id        String   @id @default(uuid())
-  
-
-  senderId String
-  sender   User   @relation("User1", fields: [senderId], references: [id])
-
-  receriverId String
-  receiver   User   @relation("User2", fields: [receriverId], references: [id])
-
-  messages Message[]
-
-  createdAt DateTime @default(now())
-  @@unique([senderId, receriverId])
-  @@index([senderId])
-  @@index([receriverId])  
-}
-
 model Message {
   id        String   @id @default(uuid())
   content   String
@@ -107,21 +93,34 @@ model Message {
   @@index([sentAt])
 }
 
-// model Conversation {
-//   id String @id @default(uuid())
+model Conversation {
+  id String @id @default(uuid())
 
-//   user1Id String
-//   user1   User   @relation("ConversationUser1", fields: [user1Id], references: [id])
+  user1Id String
+  user1   User   @relation("ConversationUser1", fields: [user1Id], references: [id])
 
-//   user2Id String
-//   user2   User   @relation("ConversationUser2", fields: [user2Id], references: [id])
+  user2Id String
+  user2   User   @relation("ConversationUser2", fields: [user2Id], references: [id])
 
-//   messages Message[]
+  messages Message[]
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-//   @@unique([user1Id, user2Id])
-//   @@index([user1Id])
-//   @@index([user2Id])
-// }
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Alert {
+  id        String   @id @default(uuid())
+
+  senderId    String
+  sender    User     @relation("sender", fields: [senderId], references: [id])
+
+  receiverId String
+  receiver   User    @relation("receiver", fields: [receiverId], references: [id])
+
+  message   String
+  createdAt DateTime @default(now())
+}

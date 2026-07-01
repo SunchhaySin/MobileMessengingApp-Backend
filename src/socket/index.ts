@@ -101,13 +101,30 @@ export const initSocket = (io: Server) => {
             }
         });
 
+        const newAlert = await prisma.alert.create({
+          data: {
+            senderId: userId!,
+            receiverId: recipientId,
+            message: ` Friend Request Sent`,
+          },
+          include: {
+            sender: { select: {username: true }},
+            receiver: { select: {username: true}},
+          }
+        })
+
         // notify sender
-        socket.emit("friend:add:success", { message: "Friend Request Sent", request: newRequest });
+        socket.emit("friend:add:success", {
+          message: "Friend Request Sent",
+          request: newRequest,
+          alert: newAlert,
+        });
 
         // notify recipient in real time
         io.to(`user:${recipientId}`).emit("friend:new:request", {
           message: "You have a new friend request",
-          request: newRequest
+          request: newRequest,
+          alert: newAlert,
         });
       } catch (e) {
         socket.emit("friend:add:error", { message: "Server error" });
@@ -139,9 +156,6 @@ export const initSocket = (io: Server) => {
       const updatedStatus = await prisma.request.update({
         where: { id: requestId },
         data: { status: "Accepted" },
-        select: {
-          status:true
-        }
       });
 
       const newFriend = await prisma.friend.create({
@@ -164,12 +178,31 @@ export const initSocket = (io: Server) => {
         }
       });
 
+      const newAlert = await prisma.alert.create({
+        data: {
+          senderId: userId!,
+          receiverId: request.requestFrom.id,
+          message: "Friend Request Accepted",
+        },
+        include: {
+          sender: { select: { username: true } },
+          receiver: { select: { username: true } },
+        },
+      });
+
       // notify acceptor
-      socket.emit("friend:accept:success", { message: "Request Accepted", updatedStatus: updatedStatus, friend: newFriend });
+      socket.emit("friend:accept:success", {
+        message: "Friend Request Accepted",
+        updatedStatus: updatedStatus,
+        friend: newFriend,
+        alert: newAlert,
+      });
       // notify the sender in real time
       io.to(`user:${request.requesterID}`).emit("friend:request:accepted", {
         message: "Your friend request was accepted",
-        friend: newFriend
+        updatedStatus: updatedStatus,
+        friend: newFriend,
+        alert: newAlert,
       });
     });
 
@@ -178,6 +211,7 @@ export const initSocket = (io: Server) => {
     socket.on("friend:reject", async ({ requestId }) => {
       const request = await prisma.request.findUnique({
         where: { id: requestId },
+        include: { requestFrom: { select: { id: true, username: true } } },
       });
 
       if (!request)
@@ -199,10 +233,28 @@ export const initSocket = (io: Server) => {
         data: { status: "Rejected" },
       });
 
-      socket.emit("friend:reject:success", { message: "Request Rejected", updatedStatus: updatedStatus });
+      const newAlert = await prisma.alert.create({
+        data: {
+          senderId: userId!,
+          receiverId: request.requestFrom.id,
+          message: "Friend Request Rejected",
+        },
+        include: {
+          sender: { select: { username: true } },
+          receiver: { select: { username: true } },
+        },
+      });
+
+      socket.emit("friend:reject:success", {
+        message: "Friend Request Rejected",
+        updatedStatus: updatedStatus,
+        alert: newAlert,
+      });
+
       io.to(`user:${request.requesterID}`).emit("friend:request:rejected", {
         message: "Your friend request was rejected",
-        requestId: requestId
+        updatedStatus: updatedStatus,
+        alert: newAlert,
       });
     });
 
