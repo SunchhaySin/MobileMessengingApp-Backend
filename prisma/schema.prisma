@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "./generated/prisma"
@@ -13,26 +8,87 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  username String
-  password String
-
-  sentRequests Request[] @relation("RequestFrom")
-  receivedRequests Request[] @relation("RequestTo")
-
-  friends  Friend[] @relation("UserFriends")
-  friendOf Friend[] @relation("FriendOf")
-
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  username            String
+  password            String
+  createdAt           DateTime       @default(now())
+  alertFrom           Alert[]        @relation("receiver")
+  alertsTo            Alert[]        @relation("sender")
   conversationAsUser1 Conversation[] @relation("ConversationUser1")
   conversationAsUser2 Conversation[] @relation("ConversationUser2")
+  friendOf            Friend[]       @relation("FriendOf")
+  friends             Friend[]       @relation("UserFriends")
+  messages            Message[]
+  sentRequests        Request[]      @relation("RequestFrom")
+  receivedRequests    Request[]      @relation("RequestTo")
+}
 
-  messages             Message[]
+model Request {
+  id          String        @id @default(uuid())
+  requesterID String
+  userID      String
+  status      RequestStatus @default(Sent)
+  createdAt   DateTime      @default(now())
+  requestFrom User          @relation("RequestFrom", fields: [requesterID], references: [id])
+  requestTo   User          @relation("RequestTo", fields: [userID], references: [id])
 
-  alertsTo Alert[] @relation("sender")
-  alertFrom  Alert[] @relation("receiver")
+  @@unique([requesterID, userID])
+  @@index([userID])
+  @@index([requesterID])
+}
 
+model Friend {
+  id        String   @id @default(uuid())
   createdAt DateTime @default(now())
+  userId    String
+  friendId  String
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id])
+  user      User     @relation("UserFriends", fields: [userId], references: [id])
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  content        String
+  senderId       String
+  conversationId String
+  sentAt         DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([sentAt])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user1Id   String
+  user2Id   String
+  user1     User      @relation("ConversationUser1", fields: [user1Id], references: [id])
+  user2     User      @relation("ConversationUser2", fields: [user2Id], references: [id])
+  messages  Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Alert {
+  id         String     @id @default(uuid())
+  senderId   String
+  receiverId String
+  message    String
+  createdAt  DateTime   @default(now())
+  type       AlertTypes
+  receiver   User       @relation("receiver", fields: [receiverId], references: [id])
+  sender     User       @relation("sender", fields: [senderId], references: [id])
 }
 
 enum RequestStatus {
@@ -42,85 +98,11 @@ enum RequestStatus {
   Rejected
 }
 
-model Request {
-  id        String   @id @default(uuid())
-
-  requesterID String
-  requestFrom User @relation("RequestFrom", fields: [requesterID], references: [id])
-
-  userID String
-  requestTo User @relation("RequestTo", fields: [userID], references: [id])
-
-  status RequestStatus @default(Sent)
-  createdAt DateTime @default(now())
-
-  @@unique([requesterID, userID])
-  @@index([userID])
-  @@index([requesterID])
-}
-
-model Friend {
-  id        String   @id @default(uuid())
-  
-
-  userId String
-  user   User   @relation("UserFriends", fields: [userId], references: [id])
-
-  friendId String
-  friend   User   @relation("FriendOf", fields: [friendId], references: [id])
-
-  createdAt DateTime @default(now())
-  @@unique([userId, friendId])
-  @@index([userId])
-  @@index([friendId])
-}
-
-model Message {
-  id        String   @id @default(uuid())
-  content   String
-  
-
-  senderId String
-  sender   User   @relation(fields: [senderId], references: [id])
-
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-
-  sentAt DateTime @default(now())
-
-  @@index([conversationId])
-  @@index([senderId])
-  @@index([sentAt])
-}
-
-model Conversation {
-  id String @id @default(uuid())
-
-  user1Id String
-  user1   User   @relation("ConversationUser1", fields: [user1Id], references: [id])
-
-  user2Id String
-  user2   User   @relation("ConversationUser2", fields: [user2Id], references: [id])
-
-  messages Message[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([user1Id, user2Id])
-  @@index([user1Id])
-  @@index([user2Id])
-}
-
-model Alert {
-  id        String   @id @default(uuid())
-
-  senderId    String
-  sender    User     @relation("sender", fields: [senderId], references: [id])
-
-  receiverId String
-  receiver   User    @relation("receiver", fields: [receiverId], references: [id])
-
-  message   String
-  createdAt DateTime @default(now())
+enum AlertTypes {
+  Send_Request
+  Reject_Request
+  Delecte_Request
+  Accept_Request
+  Sent_Message
+  Open_Chat
 }

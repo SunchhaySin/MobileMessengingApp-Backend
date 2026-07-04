@@ -7,7 +7,7 @@
   import authRoutes from "./routes/auth.js";
   import friendRoutes from "./routes/friend.ts";
   import alertRoutes from "./routes/alert.ts";
-  // import conversationRoutes from "./routes/conversation.js";
+  import conversationRoutes from "./routes/conversation.js";
   import { initSocket } from "./socket/index.js";
 
 
@@ -29,7 +29,7 @@
   app.use("/auth", authRoutes);
   app.use("/friend", friendRoutes);
   app.use("/alert", alertRoutes);
-  // app.use("/conversations", conversationRoutes);
+  app.use("/conversation", conversationRoutes);
 
   // Test route
   app.get("/", (req, res) => {

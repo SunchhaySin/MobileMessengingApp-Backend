@@ -106,6 +106,7 @@ export const initSocket = (io: Server) => {
             senderId: userId!,
             receiverId: recipientId,
             message: ` Friend Request Sent`,
+            type: "Send_Request",
           },
           include: {
             sender: { select: {username: true }},
@@ -117,12 +118,12 @@ export const initSocket = (io: Server) => {
         socket.emit("friend:add:success", {
           message: "Friend Request Sent",
           request: newRequest,
-          alert: newAlert,
+          // alert: newAlert,
         });
 
         // notify recipient in real time
         io.to(`user:${recipientId}`).emit("friend:new:request", {
-          message: "You have a new friend request",
+          // message: "You have a new friend request",
           request: newRequest,
           alert: newAlert,
         });
@@ -183,6 +184,7 @@ export const initSocket = (io: Server) => {
           senderId: userId!,
           receiverId: request.requestFrom.id,
           message: "Friend Request Accepted",
+          type: "Accept_Request",
         },
         include: {
           sender: { select: { username: true } },
@@ -195,11 +197,11 @@ export const initSocket = (io: Server) => {
         message: "Friend Request Accepted",
         updatedStatus: updatedStatus,
         friend: newFriend,
-        alert: newAlert,
+        // alert: newAlert,
       });
       // notify the sender in real time
       io.to(`user:${request.requesterID}`).emit("friend:request:accepted", {
-        message: "Your friend request was accepted",
+        // message: "Your friend request was accepted",
         updatedStatus: updatedStatus,
         friend: newFriend,
         alert: newAlert,
@@ -238,6 +240,7 @@ export const initSocket = (io: Server) => {
           senderId: userId!,
           receiverId: request.requestFrom.id,
           message: "Friend Request Rejected",
+          type: "Reject_Request"
         },
         include: {
           sender: { select: { username: true } },
@@ -248,11 +251,11 @@ export const initSocket = (io: Server) => {
       socket.emit("friend:reject:success", {
         message: "Friend Request Rejected",
         updatedStatus: updatedStatus,
-        alert: newAlert,
+        // alert: newAlert,
       });
 
       io.to(`user:${request.requesterID}`).emit("friend:request:rejected", {
-        message: "Your friend request was rejected",
+        // message: "Your friend request was rejected",
         updatedStatus: updatedStatus,
         alert: newAlert,
       });

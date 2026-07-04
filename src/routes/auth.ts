@@ -47,8 +47,11 @@ router.post("/register", async (req, res) => {
     );
 
     res.status(201).json({ token: token, data: user, message: "Register Success"});
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
+  } catch (e) {
+    if (e instanceof Error) {
+      res.status(500).json({ message: "Server error", error: e.message});
+    }
+
   }
 });
 
