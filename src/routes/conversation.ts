@@ -1,5 +1,5 @@
 import express from "express";
-import prisma from "../prisma.js";
+import prisma from "../config/prisma.ts";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -15,6 +15,14 @@ router.post("/open", verifyToken, async (req: AuthRequest, res) => {
         OR :[
             {user1Id: req.userId!, user2Id: friendId},
             {user1Id: friendId, user2Id: req.userId!}]
+      },
+      include: {
+        user1: {
+          select: { username: true, id: true }, 
+        },
+        user2: {
+          select: { username: true, id: true },
+        },
       },
     });
 
@@ -38,55 +46,60 @@ router.post("/open", verifyToken, async (req: AuthRequest, res) => {
       },
     });
 
-    return res.status(201).json({message: "Opened new chat", data :conversation});
+    return res.status(201).json({message: "Opened new chat", data: conversation});
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 });
 
-// Get all conversations for current user
-// router.get("/", verifyToken, async (req: AuthRequest, res) => {
-//   try {
-//     const userId = req.userId as string;
+router.get("/fetch", verifyToken, async(req: AuthRequest, res) => {
+  try{
+    const coversations = await prisma.conversation.findMany({
+      where: {
+        OR: [{ user1Id: req.userId! }, { user2Id: req.userId! }],
+      },
+      include: {
+        user1: { select: { username: true, id: true } },
+        user2: { select: { username: true, id: true } },
+        messages: {
+          orderBy: {
+            sentAt: "desc",
+          },
+          take: 1,
+        },
+      },
+    });
+    
+    return res.status(200).json({data: coversations})
+  } catch(error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+})
 
-//     const conversations = await prisma.conversation.findMany({
-//       where: {
-//         members: {
-//           some: { userId },
-//         },
-//       },
-//       include: {
-//         members: {
-//           include: { user: true },
-//         },
-//         messages: {
-//           orderBy: { createdAt: "desc" },
-//           take: 1, // last message preview
-//         },
-//       },
-//     });
+router.get("/fetch/messages/:conversationId", verifyToken, async (req: AuthRequest, res) => {
+    try {
+      const conversationId = req.params.conversationId as string;
+      const messages = await prisma.message.findMany({
+        where: {
+          conversationId: conversationId,
+        },
+        include: {
+          sender: {
+            select: {username:true, id: true}
+          },
+        }
+      });
 
-//     res.status(200).json(conversations);
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error" });
-//   }
-// });
+      if(messages.length === 0) {
+        return res.status(404).json({message: "no messages found"})
+      }
 
-// Get messages for a conversation
-// router.get("/:id/messages", verifyToken, async (req: AuthRequest, res) => {
-//   try {
-//     const id = req.params["id"] as string;
-
-//     const messages = await prisma.message.findMany({
-//       where: { conversationId: id },
-//       orderBy: { createdAt: "asc" },
-//       include: { sender: true },
-//     });
-
-//     res.status(200).json(messages);
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error" });
-//   }
-// });
+      return res.json(messages)
+    } catch (e) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  },
+);
 
 export default router;

@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
-import prisma from "../prisma.js";
+import prisma from "../config/prisma.ts";
 
 interface AuthSocket extends Socket {
   userId?: string;
@@ -38,13 +38,6 @@ export const initSocket = (io: Server) => {
 
     // Join personal room
     socket.join(`user:${userId}`);
-
-    // Join a conversation room
-    socket.on("join_conversation", (conversationId: string) => {
-      socket.join(`conversation:${conversationId}`);
-      console.log(`User ${userId} joined conversation ${conversationId}`);
-    });
-
 
     // Sending Friend Request
     socket.on("friend:add", async ({ recipientId }) => {
@@ -306,25 +299,78 @@ export const initSocket = (io: Server) => {
       });
     });
 
-    // // Send a message
-    // socket.on("send_message", async (data: { conversationId: string; content: string }) => {
-    //   try {
-    //     // Save message to database
-    //     const message = await prisma.messages.create({
-    //       data: {
-    //         content: data.content,
-    //         senderId: userId,
-    //         conversationId: data.conversationId,
-    //       },
-    //       include: { sender: true },
-    //     });
 
-    //     // Broadcast to everyone in the conversation
-    //     io.to(`conversation:${data.conversationId}`).emit("new_message", message);
-    //   } catch (error) {
-    //     socket.emit("error", { message: "Failed to send message" });
-    //   }
-    // });
+    // Connect to a conversation 
+    socket.on("join_conversation", async (conversationId: string) => {
+      try {
+        const conversation = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+        });
+
+        const isParticipant =
+          conversation &&
+          (conversation.user1Id === userId || conversation.user2Id === userId);
+
+        if (!isParticipant) {
+          socket.emit("error", {
+            message: "Not authorized for this conversation",
+          });
+          return;
+        }
+
+        socket.join(`conversation:${conversationId}`);
+        console.log(`User ${userId} joined conversation ${conversationId}`);
+
+      } catch (error) {
+        console.error(error);
+        socket.emit("error", { message: "Failed to join conversation" });
+      }
+    });
+
+
+    // Send a message
+    socket.on("send:message", async (data: { conversationId: string; content: string }) => {
+        try {
+          if (!socket.rooms.has(`conversation:${data.conversationId}`)) {
+            socket.emit("error", {
+              message: "You must join the conversation first",
+            });
+            return;
+          }
+
+          if (!data.content || data.content.trim().length === 0) {
+            socket.emit("error", { message: "Message content is required" });
+            return;
+          }
+
+          const message = await prisma.message.create({
+            data: {
+              content: data.content.trim(),
+              senderId: userId!,
+              conversationId: data.conversationId,
+            },
+            include: { sender: true },
+          });
+
+          // Broadcast to the whole converstation (2 participants)
+          io.to(`conversation:${data.conversationId}`).emit(
+            "new:message",
+            message,
+          );
+          // io.to(`user:${userId}`).emit("new:message", message);
+          // io.to(`user:${data.receiverId}`).emit("new:message", message);
+        } catch (error) {
+          socket.emit("error", { message: "Failed to send message" });
+        }
+      },
+    );
+
+    // Displose the socket connection in the conversation
+    socket.on("leave_conversation", (conversationId: string) => {
+      socket.leave(`conversation:${conversationId}`);
+      console.log(`User ${userId} left conversation ${conversationId}`);
+    });
+
 
     // // Typing indicator
     // socket.on("typing", (conversationId: string) => {

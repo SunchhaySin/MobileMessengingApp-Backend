@@ -13,6 +13,8 @@ model User {
   username            String
   password            String
   createdAt           DateTime       @default(now())
+  profile             Profile?   
+
   alertFrom           Alert[]        @relation("receiver")
   alertsTo            Alert[]        @relation("sender")
   conversationAsUser1 Conversation[] @relation("ConversationUser1")
@@ -22,6 +24,20 @@ model User {
   messages            Message[]
   sentRequests        Request[]      @relation("RequestFrom")
   receivedRequests    Request[]      @relation("RequestTo")
+}
+
+model Profile {
+  id String @id @default(uuid())
+  userID String @unique
+  profileOf User @relation(fields: [userID], references: [id])
+
+  profileUrl String?
+  imageKey  String?
+  bio String?
+  contacts String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Request {

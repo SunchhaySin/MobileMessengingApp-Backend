@@ -3,11 +3,12 @@
   import { Server } from "socket.io";
   import cors from "cors";
   import dotenv from "dotenv";
-  import prisma from "./prisma.ts";
+  import prisma from "./config/prisma.ts";
   import authRoutes from "./routes/auth.js";
   import friendRoutes from "./routes/friend.ts";
   import alertRoutes from "./routes/alert.ts";
   import conversationRoutes from "./routes/conversation.js";
+  import profileRoutes from "./routes/profile.ts";
   import { initSocket } from "./socket/index.js";
 
 
@@ -30,6 +31,7 @@
   app.use("/friend", friendRoutes);
   app.use("/alert", alertRoutes);
   app.use("/conversation", conversationRoutes);
+  app.use("/profile", profileRoutes);
 
   // Test route
   app.get("/", (req, res) => {
