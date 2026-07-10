@@ -102,8 +102,8 @@ export const initSocket = (io: Server) => {
             type: "Send_Request",
           },
           include: {
-            sender: { select: {username: true }},
-            receiver: { select: {username: true}},
+            sender: { select: {username: true, id: true }},
+            receiver: { select: {username: true, id: true}},
           }
         })
 
@@ -180,8 +180,8 @@ export const initSocket = (io: Server) => {
           type: "Accept_Request",
         },
         include: {
-          sender: { select: { username: true } },
-          receiver: { select: { username: true } },
+          sender: { select: { username: true, id: true } },
+          receiver: { select: { username: true, id: true} },
         },
       });
 
@@ -236,8 +236,8 @@ export const initSocket = (io: Server) => {
           type: "Reject_Request"
         },
         include: {
-          sender: { select: { username: true } },
-          receiver: { select: { username: true } },
+          sender: { select: { username: true, id: true} },
+          receiver: { select: { username: true, id: true} },
         },
       });
 
@@ -329,7 +329,7 @@ export const initSocket = (io: Server) => {
 
 
     // Send a message
-    socket.on("send:message", async (data: { conversationId: string; content: string }) => {
+    socket.on("send:message", async (data: {tempId: string, conversationId: string; content: string }) => {
         try {
           if (!socket.rooms.has(`conversation:${data.conversationId}`)) {
             socket.emit("error", {
@@ -349,13 +349,13 @@ export const initSocket = (io: Server) => {
               senderId: userId!,
               conversationId: data.conversationId,
             },
-            include: { sender: true },
+            include: { sender: { select: {id: true, username: true, email: true}}},
           });
 
           // Broadcast to the whole converstation (2 participants)
           io.to(`conversation:${data.conversationId}`).emit(
             "new:message",
-            message,
+            {...message, tempId: data.tempId,}
           );
           // io.to(`user:${userId}`).emit("new:message", message);
           // io.to(`user:${data.receiverId}`).emit("new:message", message);

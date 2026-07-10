@@ -64,7 +64,7 @@ router.get("/fetch", verifyToken, async (req: AuthRequest, res) => {
     const result = friends.map((f) => {
       const otherUser = f.userId === req.userId ? f.friend : f.user;
       return {
-        friendId: f.id,
+        friendshipId: f.id,  // this is not the friend's ID, its the friendship Id
         createdAt: f.createdAt,
         ...otherUser,
       };
