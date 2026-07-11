@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Profile" ALTER COLUMN "contacts" DROP NOT NULL,
+ALTER COLUMN "contacts" DROP DEFAULT,
+ALTER COLUMN "contacts" SET DATA TYPE TEXT;

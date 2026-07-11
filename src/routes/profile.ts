@@ -6,6 +6,7 @@ import { uploadProfileImage } from "../service/bucket_service.ts"
 
 const router = express.Router();
 
+// Fetching your own profile 
 router.get('/', verifyToken, async(req: AuthRequest, res) => {
     try{
         const profile = await prisma.profile.findUnique({
@@ -23,6 +24,7 @@ router.get('/', verifyToken, async(req: AuthRequest, res) => {
     }
 })
 
+// For Viewing other user's profile
 router.get('/:userId', verifyToken, async(req: AuthRequest, res) => {
     try{
         const userId = req.params.userId as string;
@@ -41,6 +43,7 @@ router.get('/:userId', verifyToken, async(req: AuthRequest, res) => {
     }
 })
 
+// Adding or Updating Profile Image
 router.post("/image", verifyToken, upload.single("image"), async (req: AuthRequest, res) => {
     try {
       if (!req.file) {
@@ -52,31 +55,24 @@ router.post("/image", verifyToken, upload.single("image"), async (req: AuthReque
       const imageKey = await uploadProfileImage(req.userId!, req.file);
       const profileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${imageKey}`;
 
-      const existingProfile = await prisma.profile.findUnique({
-        where: { userID: req.userId! }, select: {userID:true, profileUrl: true}
-      });
-
-      if (existingProfile) {
-        await prisma.profile.update({
-          where: { userID: req.userId!},
-          data : {
-            imageKey: imageKey,
-            profileUrl: profileUrl,
-          }
-        })
-        return res.json({message: "Profile Picture Changed"});
-      }
-
-      await prisma.profile.create({
-        data: {
+      await prisma.profile.upsert({
+        where: {
           userID: req.userId!,
-          profileUrl, // Short hand => profileUrl: profileUrl
+        },
+        update: {
           imageKey,
+          profileUrl,
+        },
+        create: {
+          userID: req.userId!,
+          imageKey,
+          profileUrl,
         },
       });
 
-      return res.status(201).json({
-        message: "Profile Picture Added",
+      return res.json({
+        message: "Profile Picture Updated",
+        profileUrl,
       });
     } catch (e) {
       console.error(e);
@@ -85,76 +81,84 @@ router.post("/image", verifyToken, upload.single("image"), async (req: AuthReque
   },
 );
 
+// Updating your Username
 router.post("/name", verifyToken, async(req: AuthRequest, res) => {
   try{
-    const newUsername = req.body;
-    await prisma.user.update({
-      where: {id: req.userId!},
-      data: { username : newUsername },
-    })
-    return res.json({message: "Updated Display Name"});
+    const {newUsername} = req.body;
+    const data = await prisma.user.update({
+      where: { id: req.userId! },
+      data: { username: newUsername },
+      select: {username: true}
+    });
+    return res.json({message: "Updated Display Name", newUsername: data.username});
   } catch(e) {
     console.error(e)
     return res.status(500).json({ message: "Server Error" });
   }
 })
 
+// Adding or Editing your Contacts
 router.post("/contacts", verifyToken, async(req: AuthRequest, res) => {
   try{
-    const newContacts = req.body;
+    const {contacts} = req.body;
   
     const existingProfile = await prisma.profile.findUnique({
       where: { userID: req.userId! }, select: {userID:true, contacts: true}
     });
     
     if (existingProfile) {
-      await prisma.profile.update({
-        where: { id: req.userId! },
-        data: { contacts: newContacts },
+      const result = await prisma.profile.update({
+        where: { userID: req.userId! },
+        data: { contacts },
+        select: {contacts: true}
       });
 
-      return res.json({message: "Updated Contacts"});
+      return res.json({message: "Updated Contacts",  contact: result.contacts});
     }
 
-    await prisma.profile.create({
+    const result = await prisma.profile.create({
       data: {
         userID: req.userId!,
-        contacts: newContacts,
+        contacts,
       },
+      select:{contacts: true}
     });
 
-    return res.json({message: "Added New Contact"});
+    return res.json({message: "Added New Contact", contact: result.contacts});
   } catch(e) {
     console.error(e)
     return res.status(500).json({ message: "Server Error" });
   }
 })
 
+// Adding or Editing your Bio
 router.post("/bio", verifyToken, async(req: AuthRequest, res) => {
   try{
-    const newBio = req.body;
+    const {newBio} = req.body;
   
     const existingProfile = await prisma.profile.findUnique({
       where: { userID: req.userId! }, select: {userID:true, bio: true}
     });
     
     if (existingProfile) {
-      await prisma.profile.update({
-        where: { id: req.userId! },
+      const result = await prisma.profile.update({
+        where: { userID: req.userId! },
         data: { bio: newBio },
+        select: {bio: true},
       });
 
-      return res.json({message: "Updated Contacts"});
+      return res.json({message: "Updated Contacts", bio: result.bio});
     }
 
-    await prisma.profile.create({
+    const result = await prisma.profile.create({
       data: {
         userID: req.userId!,
         bio: newBio,
       },
+      select: {bio: true},
     });
     
-    return res.json({message: "Added New Contact"});
+    return res.json({message: "Added New Contact", bio: result.bio});
   } catch(e) {
     console.error(e)
     return res.status(500).json({ message: "Server Error" });

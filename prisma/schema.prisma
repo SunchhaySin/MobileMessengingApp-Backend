@@ -24,6 +24,7 @@ model User {
   messages            Message[]
   sentRequests        Request[]      @relation("RequestFrom")
   receivedRequests    Request[]      @relation("RequestTo")
+  profileHistory      ProfileHistory[]
 }
 
 model Profile {
@@ -105,6 +106,14 @@ model Alert {
   type       AlertTypes
   receiver   User       @relation("receiver", fields: [receiverId], references: [id])
   sender     User       @relation("sender", fields: [senderId], references: [id])
+}
+
+model ProfileHistory {
+  id         String     @id @default(uuid())
+  userID String 
+  historyOf User @relation(fields: [userID], references: [id])
+  message String
+  createdAt  DateTime   @default(now())
 }
 
 enum RequestStatus {
