@@ -1,8 +1,6 @@
 import express from "express";
 import prisma from "../config/prisma.ts";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
-import { upload } from "../config/multer.ts";
-import { uploadProfileImage } from "../service/bucket_service.ts"
 
 const router = express.Router();
 
@@ -43,44 +41,6 @@ router.get('/:userId', verifyToken, async(req: AuthRequest, res) => {
     }
 })
 
-// Adding or Updating Profile Image
-router.post("/image", verifyToken, upload.single("image"), async (req: AuthRequest, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          message: "Image required",
-        });
-      }
-
-      const imageKey = await uploadProfileImage(req.userId!, req.file);
-      const profileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${imageKey}`;
-
-      await prisma.profile.upsert({
-        where: {
-          userID: req.userId!,
-        },
-        update: {
-          imageKey,
-          profileUrl,
-        },
-        create: {
-          userID: req.userId!,
-          imageKey,
-          profileUrl,
-        },
-      });
-
-      return res.json({
-        message: "Profile Picture Updated",
-        profileUrl,
-      });
-    } catch (e) {
-      console.error(e);
-      return res.status(500).json({ message: "Server Error" });
-    }
-  },
-);
-
 // Updating your Username
 router.post("/name", verifyToken, async(req: AuthRequest, res) => {
   try{
@@ -90,6 +50,14 @@ router.post("/name", verifyToken, async(req: AuthRequest, res) => {
       data: { username: newUsername },
       select: {username: true}
     });
+
+    await prisma.profileHistory.create({
+      data: {
+        userID: req.userId!,
+        message: `You updated your username to ${newUsername}`,
+      }
+    })
+
     return res.json({message: "Updated Display Name", newUsername: data.username});
   } catch(e) {
     console.error(e)
@@ -112,6 +80,13 @@ router.post("/contacts", verifyToken, async(req: AuthRequest, res) => {
         data: { contacts },
         select: {contacts: true}
       });
+      
+      await prisma.profileHistory.create({
+        data: {
+          userID: req.userId!,
+          message: "You changed your Contacts Information",
+        }
+      })
 
       return res.json({message: "Updated Contacts",  contact: result.contacts});
     }
@@ -123,6 +98,13 @@ router.post("/contacts", verifyToken, async(req: AuthRequest, res) => {
       },
       select:{contacts: true}
     });
+
+    await prisma.profileHistory.create({
+      data: {
+        userID: req.userId!,
+        message: "You updated your Contacts Information",
+      }
+    })
 
     return res.json({message: "Added New Contact", contact: result.contacts});
   } catch(e) {
@@ -147,6 +129,13 @@ router.post("/bio", verifyToken, async(req: AuthRequest, res) => {
         select: {bio: true},
       });
 
+      await prisma.profileHistory.create({
+        data: {
+          userID: req.userId!,
+          message: "You updated your Bio",
+        }
+      })
+
       return res.json({message: "Updated Contacts", bio: result.bio});
     }
 
@@ -158,7 +147,45 @@ router.post("/bio", verifyToken, async(req: AuthRequest, res) => {
       select: {bio: true},
     });
     
+    await prisma.profileHistory.create({
+      data: {
+        userID: req.userId!,
+        message: "You added to your Bio",
+      }
+    })
+
     return res.json({message: "Added New Contact", bio: result.bio});
+  } catch(e) {
+    console.error(e)
+    return res.status(500).json({ message: "Server Error" });
+  }
+})
+
+// Password Reset
+router.post("/reset/password", verifyToken, async(req: AuthRequest, res) => {
+  try{
+    const { oldPassword } = req.body
+
+
+  } catch(e) {
+    console.error(e)
+    return res.status(500).json({ message: "Server Error" });
+  }
+})
+
+// Fetch Profile History
+router.get("/history", verifyToken, async(req:AuthRequest, res) => {
+  try {
+    const historyList = await prisma.profileHistory.findMany({
+      where: {userID: req.userId!},
+      orderBy: {createdAt: "desc"}
+    })
+    
+    if(historyList.length === 0 ) {
+      return res.status(404).json({message: "History Not Found"})
+    }
+
+    return res.json(historyList)
   } catch(e) {
     console.error(e)
     return res.status(500).json({ message: "Server Error" });

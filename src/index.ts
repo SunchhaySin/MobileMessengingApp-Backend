@@ -9,6 +9,7 @@
   import alertRoutes from "./routes/alert.ts";
   import conversationRoutes from "./routes/conversation.js";
   import profileRoutes from "./routes/profile.ts";
+  import profileImageRoutes from "./routes/upload.ts"
   import { initSocket } from "./socket/index.js";
 
 
@@ -23,9 +24,13 @@
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
   dotenv.config();
 
+  // Mount ProfileImage route above express.json()
+  app.use("/profile/upload", profileImageRoutes);
+
+  app.use(express.json());
+  
   // Routes
   app.use("/auth", authRoutes);
   app.use("/friend", friendRoutes);

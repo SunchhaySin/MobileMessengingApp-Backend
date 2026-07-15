@@ -28,6 +28,11 @@ router.get("/search", verifyToken, async (req: AuthRequest, res) => {
         id: true,
         username: true,
         email: true,
+        profile : {
+          select: {
+            profileUrl: true
+          }
+        }
       },
     });
 
@@ -53,10 +58,10 @@ router.get("/fetch", verifyToken, async (req: AuthRequest, res) => {
       },
       include: {
         user: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, profile: {select: {profileUrl: true}} },
         },
         friend: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true, email: true, profile: {select: {profileUrl: true}}},
         },
       },
     });
@@ -90,6 +95,11 @@ router.get("/fetch/requests", verifyToken, async (req: AuthRequest, res) => {
             id: true,
             username: true,
             email: true,
+            profile: {
+              select: {
+                profileUrl: true
+              }
+            }
           },
         },
       },
@@ -105,6 +115,11 @@ router.get("/fetch/requests", verifyToken, async (req: AuthRequest, res) => {
             id: true,
             username: true,
             email: true,
+            profile: {
+              select: {
+                profileUrl: true
+              }
+            }
           },
         },
       },

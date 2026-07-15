@@ -12,10 +12,20 @@ router.get("/fetch", verifyToken, async (req: AuthRequest, res) => {
       },
       include: {
         sender: {
-          select: { id: true, username: true, email: true },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profile: { select: { profileUrl: true } },
+          },
         },
         receiver: {
-          select: { id: true, username: true, email: true },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profile: { select: { profileUrl: true } },
+          },
         },
       },
       orderBy: {

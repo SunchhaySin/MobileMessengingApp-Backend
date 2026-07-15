@@ -88,10 +88,24 @@ export const initSocket = (io: Server) => {
 
         const newRequest = await prisma.request.create({
           data: { requesterID: userId!, userID: recipientId },
-          include: { 
-              requestFrom: { select: { id: true, username: true, email: true }},
-              requestTo: { select: { id: true, username: true, email: true }}
-            }
+          include: {
+            requestFrom: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                profile: { select: { profileUrl: true } },
+              },
+            },
+            requestTo: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                profile: { select: { profileUrl: true } },
+              },
+            },
+          },
         });
 
         const newAlert = await prisma.alert.create({
@@ -102,10 +116,22 @@ export const initSocket = (io: Server) => {
             type: "Send_Request",
           },
           include: {
-            sender: { select: {username: true, id: true }},
-            receiver: { select: {username: true, id: true}},
-          }
-        })
+            sender: {
+              select: {
+                username: true,
+                id: true,
+                profile: { select: { profileUrl: true } },
+              },
+            },
+            receiver: {
+              select: {
+                username: true,
+                id: true,
+                profile: { select: { profileUrl: true } },
+              },
+            },
+          },
+        });
 
         // notify sender
         socket.emit("friend:add:success", {
@@ -160,6 +186,11 @@ export const initSocket = (io: Server) => {
               username: true,
               id:true,
               email: true,
+              profile: {
+                select: {
+                  profileUrl: true
+                }
+              }
             }
           },
           friend:{
@@ -167,6 +198,11 @@ export const initSocket = (io: Server) => {
               username: true,
               id:true,
               email: true,
+              profile: {
+                select: {
+                  profileUrl: true
+                }
+              }
             }
           }
         }
@@ -180,8 +216,20 @@ export const initSocket = (io: Server) => {
           type: "Accept_Request",
         },
         include: {
-          sender: { select: { username: true, id: true } },
-          receiver: { select: { username: true, id: true} },
+          sender: {
+            select: {
+              username: true,
+              id: true,
+              profile: { select: { profileUrl: true } },
+            },
+          },
+          receiver: {
+            select: {
+              username: true,
+              id: true,
+              profile: { select: { profileUrl: true } },
+            },
+          },
         },
       });
 
@@ -236,8 +284,20 @@ export const initSocket = (io: Server) => {
           type: "Reject_Request"
         },
         include: {
-          sender: { select: { username: true, id: true} },
-          receiver: { select: { username: true, id: true} },
+          sender: {
+            select: {
+              username: true,
+              id: true,
+              profile: { select: { profileUrl: true } },
+            },
+          },
+          receiver: {
+            select: {
+              username: true,
+              id: true,
+              profile: { select: { profileUrl: true } },
+            },
+          },
         },
       });
 
