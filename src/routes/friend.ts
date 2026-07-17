@@ -58,10 +58,24 @@ router.get("/fetch", verifyToken, async (req: AuthRequest, res) => {
       },
       include: {
         user: {
-          select: { id: true, username: true, email: true, profile: {select: {profileUrl: true}} },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profile: {
+              select: { profileUrl: true, contacts: true, bio: true },
+            },
+          },
         },
         friend: {
-          select: { id: true, username: true, email: true, profile: {select: {profileUrl: true}}},
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profile: {
+              select: { profileUrl: true, contacts: true, bio: true },
+            },
+          },
         },
       },
     });
@@ -130,10 +144,39 @@ router.get("/fetch/requests", verifyToken, async (req: AuthRequest, res) => {
       receivedRequests: receivedRequests,
     });
   } catch (e) {
+    console.error(e);
     res.status(500).json({
       message: "Server error",
     });
   }
-});;
+});
+
+router.post("/unfriend", verifyToken, async (req: AuthRequest, res) => {
+  try {
+    const { friendId } = req.body;
+    const isFriend = await prisma.friend.findFirst({
+      where: {
+        OR: [
+          { userId: req.userId!, friendId: friendId },
+          { userId: friendId, friendId: req.userId! },
+        ],
+      },
+    });
+    
+    if(!isFriend) {
+      return res.status(404).json({ message: "Restricted Permission" });
+    }
+
+    await prisma.friend.delete({
+      where: { id: isFriend.id },
+    });
+    
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+});
 
 export default router

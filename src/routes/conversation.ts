@@ -1,6 +1,7 @@
 import express from "express";
 import prisma from "../config/prisma.ts";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
+import { getIO } from "../socket/index.ts";
 
 const router = express.Router();
 
@@ -52,9 +53,10 @@ router.post("/open", verifyToken, async (req: AuthRequest, res) => {
   }
 });
 
+// Fetches all conversation and seperates archvied one and checking frieship status
 router.get("/fetch", verifyToken, async(req: AuthRequest, res) => {
   try{
-    const coversations = await prisma.conversation.findMany({
+    const conversations = await prisma.conversation.findMany({
       where: {
         OR: [{ user1Id: req.userId! }, { user2Id: req.userId! }],
       },
@@ -69,14 +71,38 @@ router.get("/fetch", verifyToken, async(req: AuthRequest, res) => {
         },
       },
     });
+
+    // Pull all friendships involving this user in one query,
+    // instead of querying per-conversation (avoids N+1)
+    const friendships = await prisma.friend.findMany({
+      where: {
+        OR: [{ userId: req.userId! }, { friendId: req.userId! }],
+      },
+    });
+
+    // Build a set of userIds this user is still friends with
+    const friendIds = new Set(
+      friendships.map((f) =>
+        f.userId === req.userId ? f.friendId : f.userId
+      )
+    );
+
+    const conversationsWithStatus = conversations.map((c) => {
+      const otherUserId = c.user1Id === req.userId ? c.user2Id : c.user1Id;
+      return {
+        ...c,
+        isArchived: !friendIds.has(otherUserId),
+      };
+    });
     
-    return res.status(200).json({data: coversations})
+    return res.status(200).json({data: conversationsWithStatus})
   } catch(error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 })
 
+// Fetches Messages inside a conversation
 router.get("/fetch/messages/:conversationId", verifyToken, async (req: AuthRequest, res) => {
     try {
       const conversationId = req.params.conversationId as string;
@@ -101,5 +127,43 @@ router.get("/fetch/messages/:conversationId", verifyToken, async (req: AuthReque
     }
   },
 );
+
+// Delete Coversation between two people, 1 person delete also affects the other person in the conversation
+router.delete("/delete/:conversationId", verifyToken, async(req:AuthRequest, res) => {
+  try{
+    const conversationId = req.params.conversationId as string;
+
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [{user1Id: req.userId!}, {user2Id: req.userId!}]
+      }
+    })
+
+    if(!conversation){
+      return res.status(404).json({message: "You're not a member of this conversation"})
+    } 
+
+    const otherUserId =
+      conversation.user1Id === req.userId ? conversation.user2Id : conversation.user1Id;
+
+    // remove messages first before deleting the conversation
+    await prisma.message.deleteMany({ where: { conversationId } });
+
+    await prisma.conversation.delete({
+      where:{ id: conversationId}
+    })
+
+    getIO().to(`user:${otherUserId}`).emit("conversation:deleted", {
+      conversationId,
+      deletedBy: req.userId,
+    });
+
+    return res.json({message: "Conversation deleted successfully"})
+  } catch(e) {
+    console.error(e)
+    return res.status(500).json({ message: "Server error" });
+  }
+})
 
 export default router;

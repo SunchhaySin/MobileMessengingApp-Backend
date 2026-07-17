@@ -6,6 +6,14 @@ interface AuthSocket extends Socket {
   userId?: string;
 }
 
+// Module-level reference so other files (like REST routes) can access the same io instance
+let ioInstance: Server;
+
+export const getIO = () => {
+  if (!ioInstance) throw new Error("Socket.io not initialized");
+  return ioInstance;
+};
+
 // Middleware to verify JWT on socket connection
 const authenticateSocket = (
   socket: AuthSocket,
@@ -29,6 +37,7 @@ const authenticateSocket = (
 };
 
 export const initSocket = (io: Server) => {
+  ioInstance = io; // <-- store the reference as soon as initSocket runs
   // Apply auth middleware
   io.use(authenticateSocket);
 
@@ -398,6 +407,30 @@ export const initSocket = (io: Server) => {
             return;
           }
 
+          const conversation = await prisma.conversation.findUnique({
+            where: { id: data.conversationId },
+          });
+
+          if (!conversation) {
+            socket.emit("error", { message: "Conversation not found" });
+            return;
+          }
+
+          const otherUserId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
+          const stillFriends = await prisma.friend.findFirst({
+            where: {
+              OR: [
+                { userId: userId!, friendId: otherUserId },
+                { userId: otherUserId, friendId: userId! },
+              ],
+            },
+          });
+
+          if (!stillFriends) {
+            socket.emit("error", { message: "You are no longer friends with this user" });
+            return;
+          }
+
           if (!data.content || data.content.trim().length === 0) {
             socket.emit("error", { message: "Message content is required" });
             return;
@@ -417,13 +450,54 @@ export const initSocket = (io: Server) => {
             "new:message",
             {...message, tempId: data.tempId,}
           );
-          // io.to(`user:${userId}`).emit("new:message", message);
-          // io.to(`user:${data.receiverId}`).emit("new:message", message);
+
         } catch (error) {
           socket.emit("error", { message: "Failed to send message" });
         }
       },
     );
+    
+    // Unfriending a user
+    socket.on("friend:remove", async ({ friendId }) => {
+      try {
+        if (!friendId) {
+          return socket.emit("friend:remove:error", {
+            message: "No friend specified",
+          });
+        }
+
+        const existingFriendship = await prisma.friend.findFirst({
+          where: {
+            OR: [
+              { userId: userId!, friendId: friendId },
+              { userId: friendId, friendId: userId! },
+            ],
+          },
+        });
+
+        if (!existingFriendship) {
+          return socket.emit("friend:remove:error", {
+            message: "Restricted Permission",
+          });
+        }
+
+        await prisma.friend.delete({
+          where: { id: existingFriendship.id },
+        });
+
+        socket.emit("friend:remove:success", {
+          message: "Unfriended successfully",
+          friendId: friendId,
+        });
+
+        io.to(`user:${friendId}`).emit("friend:removed", {
+          removedBy: userId,
+        });
+      } catch (e) {
+        console.error(e);
+        socket.emit("friend:remove:error", { message: "Server error" });
+      }
+    });
 
     // Displose the socket connection in the conversation
     socket.on("leave_conversation", (conversationId: string) => {

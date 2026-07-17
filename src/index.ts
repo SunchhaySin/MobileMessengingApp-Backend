@@ -10,6 +10,7 @@
   import conversationRoutes from "./routes/conversation.js";
   import profileRoutes from "./routes/profile.ts";
   import profileImageRoutes from "./routes/upload.ts"
+  import accountRoutes from "./routes/account.ts";
   import { initSocket } from "./socket/index.js";
 
 
@@ -37,6 +38,7 @@
   app.use("/alert", alertRoutes);
   app.use("/conversation", conversationRoutes);
   app.use("/profile", profileRoutes);
+  app.use("/account", accountRoutes)
 
   // Test route
   app.get("/", (req, res) => {

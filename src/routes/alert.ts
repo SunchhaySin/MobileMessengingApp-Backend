@@ -42,4 +42,30 @@ router.get("/fetch", verifyToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.delete("/delete/:alertId", verifyToken, async(req:AuthRequest, res) => {
+  try{
+    const alertId = req.params.alertId as string;
+    const alert = await prisma.alert.findUnique({
+      where: { id: alertId },
+    });
+
+    if (!alert) {
+      return res.status(404).json({ message: "Alert not found" });
+    }
+
+    if (alert.receiverId !== req.userId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    await prisma.alert.delete({
+      where: { id: alertId },
+    });
+
+    return res.json({ message: "Alert Deleted Successfully"});
+  } catch(e) {
+    console.error(e);
+    return res.status(500).json({message: "Server Error"})
+  }
+})
+
 export default router;
