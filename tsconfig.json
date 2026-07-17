@@ -22,8 +22,8 @@
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "emitDeclarationOnly":true,
-    "allowImportingTsExtensions": true,
+    // "emitDeclarationOnly":true,  // this only generate type declaration file, not executable js files
+    // "allowImportingTsExtensions": true,
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
