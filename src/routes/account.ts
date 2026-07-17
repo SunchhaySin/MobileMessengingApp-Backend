@@ -1,5 +1,5 @@
 import express from "express";
-import prisma from "../config/prisma.ts";
+import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
 

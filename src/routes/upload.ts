@@ -1,8 +1,8 @@
 import express from "express";
-import prisma from "../config/prisma.ts";
+import prisma from "../config/prisma.js";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
-import { upload } from "../config/multer.ts";
-import { uploadProfileImage, deleteProfileImage } from "../service/bucket_service.ts"
+import { upload } from "../config/multer.js";
+import { uploadProfileImage, deleteProfileImage } from "../service/bucket_service.js"
 
 const router = express.Router();
 router.post("/image", verifyToken, upload.single("image"), async (req: AuthRequest, res) => {

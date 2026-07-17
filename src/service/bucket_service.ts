@@ -1,5 +1,5 @@
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { s3 } from "../config/s3_client.ts"
+import { s3 } from "../config/s3_client.js"
 
 export async function uploadProfileImage(
   userId: string,

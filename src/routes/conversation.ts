@@ -1,7 +1,7 @@
 import express from "express";
-import prisma from "../config/prisma.ts";
+import prisma from "../config/prisma.js";
 import { verifyToken, AuthRequest } from "../middleware/auth.js";
-import { getIO } from "../socket/index.ts";
+import { getIO } from "../socket/index.js";
 
 const router = express.Router();
 

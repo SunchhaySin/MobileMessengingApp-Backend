@@ -3,14 +3,14 @@
   import { Server } from "socket.io";
   import cors from "cors";
   import dotenv from "dotenv";
-  import prisma from "./config/prisma.ts";
+  import prisma from "./config/prisma.js";
   import authRoutes from "./routes/auth.js";
-  import friendRoutes from "./routes/friend.ts";
-  import alertRoutes from "./routes/alert.ts";
+  import friendRoutes from "./routes/friend.js";
+  import alertRoutes from "./routes/alert.js";
   import conversationRoutes from "./routes/conversation.js";
-  import profileRoutes from "./routes/profile.ts";
-  import profileImageRoutes from "./routes/upload.ts"
-  import accountRoutes from "./routes/account.ts";
+  import profileRoutes from "./routes/profile.js";
+  import profileImageRoutes from "./routes/upload.js"
+  import accountRoutes from "./routes/account.js";
   import { initSocket } from "./socket/index.js";
 
 

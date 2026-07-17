@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
-import prisma from "../config/prisma.ts";
+import prisma from "../config/prisma.js";
 
 interface AuthSocket extends Socket {
   userId?: string;
