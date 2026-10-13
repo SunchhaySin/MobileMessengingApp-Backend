@@ -95,17 +95,17 @@
     }
   })
 
-  async function checkDb() {
-    try {
-      const u = new URL(process.env.DATABASE_URL!);
-      console.log("DB host:", u.hostname, "port:", u.port, "user:", u.username);
-      await prisma.$queryRaw`SELECT 1`;
-      console.log("Database connected");
-    } catch (e) {
-      console.error("Database connection failed:", e);
-    }
-  }
-  checkDb();
+  // async function checkDb() {
+  //   try {
+  //     const u = new URL(process.env.DATABASE_URL!);
+  //     console.log("DB host:", u.hostname, "port:", u.port, "user:", u.username);
+  //     await prisma.$queryRaw`SELECT 1`;
+  //     console.log("Database connected");
+  //   } catch (e) {
+  //     console.error("Database connection failed:", e);
+  //   }
+  // }
+  // checkDb();
 
   // Socket.io
   // io.on("connection", (socket) => {
